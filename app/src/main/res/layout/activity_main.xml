@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:ads="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/blue_background"
+    tools:context="developer.android.vd.diceroller.MainActivity">
+
+    <LinearLayout
+        android:id="@+id/topPanel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="4sp"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/tv_number"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="end"
+            android:shadowColor="@android:color/white"
+            android:shadowDx="1"
+            android:shadowDy="1"
+            android:shadowRadius="1"
+            android:text="@string/number"
+            android:textAppearance="@style/TextAppearance.AppCompat.Title"
+            android:textColor="@android:color/black" />
+
+        <ImageButton
+            android:layout_width="30sp"
+            android:layout_height="30sp"
+            android:background="@drawable/ic_minus"
+            android:contentDescription="@string/minus"
+            android:onClick="minusOne" />
+
+        <TextView
+            android:id="@+id/tv_no_dice"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/spinner_bg"
+            android:paddingStart="20sp"
+            android:paddingEnd="20sp"
+            android:text="@string/one"
+            android:textColor="#000000"
+            android:textSize="20sp" />
+
+        <ImageButton
+            android:layout_width="30sp"
+            android:layout_height="30sp"
+            android:background="@drawable/ic_plus"
+            android:contentDescription="@string/plus"
+            android:onClick="plusOne" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/adView"
+        android:layout_below="@+id/topPanel">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="4sp"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:id="@+id/iv_dice1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="start"
+                    android:layout_weight="2"
+                    android:contentDescription="@string/dice"
+                    android:src="@drawable/dice_none_svg"
+                    android:visibility="invisible" />
+
+                <ImageView
+                    android:id="@+id/iv_dice2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_weight="2"
+                    android:contentDescription="@string/dice"
+                    android:src="@drawable/dice_none_svg"
+                    android:visibility="invisible" />
+
+                <ImageView
+                    android:id="@+id/iv_dice3"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end"
+                    android:layout_weight="2"
+                    android:contentDescription="@string/dice"
+                    android:src="@drawable/dice_none_svg"
+                    android:visibility="invisible" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="4sp"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:id="@+id/iv_dice4"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="start"
+                    android:layout_weight="2"
+                    android:contentDescription="@string/dice"
+                    android:src="@drawable/dice_none_svg"
+                    android:visibility="invisible" />
+
+                <ImageView
+                    android:id="@+id/iv_dice5"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_weight="2"
+                    android:contentDescription="@string/dice"
+                    android:src="@drawable/dice_none_svg" />
+
+                <ImageView
+                    android:id="@+id/iv_dice6"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end"
+                    android:layout_weight="2"
+                    android:contentDescription="@string/dice"
+                    android:src="@drawable/dice_none_svg"
+                    android:visibility="invisible" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="4sp"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:id="@+id/iv_dice7"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="start"
+                    android:layout_weight="2"
+                    android:contentDescription="@string/dice"
+                    android:src="@drawable/dice_none_svg"
+                    android:visibility="invisible" />
+
+                <ImageView
+                    android:id="@+id/iv_dice8"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_weight="2"
+                    android:contentDescription="@string/dice"
+                    android:src="@drawable/dice_none_svg"
+                    android:visibility="invisible" />
+
+                <ImageView
+                    android:id="@+id/iv_dice9"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end"
+                    android:layout_weight="2"
+                    android:contentDescription="@string/dice"
+                    android:src="@drawable/dice_none_svg"
+                    android:visibility="invisible" />
+
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_total"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_margin="4sp"
+                android:gravity="center"
+                android:shadowColor="@android:color/white"
+                android:shadowDx="2"
+                android:shadowDy="2"
+                android:shadowRadius="2"
+                android:text="@string/total"
+                android:textColor="@android:color/black"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btn_roll"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+
+                android:layout_gravity="center"
+                android:background="@drawable/buttonshape"
+                android:gravity="center"
+                android:onClick="roll"
+                android:shadowColor="@android:color/black"
+                android:shadowDx="5"
+                android:shadowDy="5"
+                android:shadowRadius="5"
+                android:text="@string/roll"
+                android:textAppearance="@style/TextAppearance.AppCompat.Display1"
+                android:textColor="@android:color/white" />
+        </LinearLayout>
+
+    </ScrollView>
+
+    <com.google.android.gms.ads.AdView
+        android:id="@+id/adView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        ads:adSize="SMART_BANNER"
+        ads:adUnitId="@string/banner_ad_unit_id" />
+
+</RelativeLayout>

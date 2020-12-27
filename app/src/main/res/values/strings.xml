@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">Dice Roller</string>
+    <string name="roll">R O L L</string>
+    <string name="total">TOTAL : 0</string>
+    <string name="dice">dice</string>
+    <string name="number">Number of Dice :</string>
+    <string name="minus">minus</string>
+    <string name="one">1</string>
+    <string name="plus">plus</string>
+    <!--TEST-->
+    <string name="admob_app_id">ca-app-pub-3940256099942544~3347511713</string>
+    <string name="banner_ad_unit_id">ca-app-pub-3940256099942544/6300978111</string>
+
+</resources>
