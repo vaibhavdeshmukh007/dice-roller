@@ -13,6 +13,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
 import com.google.android.gms.ads.MobileAds;
+import com.google.android.gms.ads.initialization.InitializationStatus;
+import com.google.android.gms.ads.initialization.OnInitializationCompleteListener;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -52,7 +54,8 @@ public class MainActivity extends AppCompatActivity {
         validDices = new ArrayList<>();
         validDices.add(dice5);//when app starts
 
-        MobileAds.initialize(this, getString(R.string.admob_app_id));
+        MobileAds.initialize(this, initializationStatus -> {});
+
         AdView adView = findViewById(R.id.adView);
         AdRequest adRequest = new AdRequest.Builder().build();
         adView.loadAd(adRequest);
