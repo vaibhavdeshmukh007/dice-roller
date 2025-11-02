@@ -1,38 +1,74 @@
 package developer.android.vd.diceroller;
 
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.graphics.Typeface;
-import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
+import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.res.ResourcesCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
 import com.google.android.gms.ads.MobileAds;
-import com.google.android.gms.ads.initialization.InitializationStatus;
-import com.google.android.gms.ads.initialization.OnInitializationCompleteListener;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class MainActivity extends AppCompatActivity {
-
+    private RelativeLayout mainRl;
     private ImageView dice1, dice2, dice3, dice4, dice5, dice6, dice7, dice8, dice9;
     private TextView total, number;
+    private AdView adView;
+
     private ArrayList<ImageView> validDices, allDiceList;
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private Timer timer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.rl_main_container), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
 
+        initializeViews();
+        initializeAd();
+
+        Button rollButton = findViewById(R.id.btn_roll);
+        rollButton.setOnClickListener(this::roll);
+
+        allDiceList = new ArrayList<>(Arrays.asList(dice1, dice2, dice3, dice4, dice5, dice6, dice7, dice8, dice9));
+        validDices = new ArrayList<>();
+        validDices.add(dice5);//when app starts
+    }
+
+    private void initializeViews() {
+        mainRl = findViewById(R.id.rl_main_container);
         number = findViewById(R.id.tv_no_dice);
         dice1 = findViewById(R.id.iv_dice1);
         dice2 = findViewById(R.id.iv_dice2);
@@ -44,23 +80,19 @@ public class MainActivity extends AppCompatActivity {
         dice8 = findViewById(R.id.iv_dice8);
         dice9 = findViewById(R.id.iv_dice9);
         total = findViewById(R.id.tv_total);
-        Button rollButton = findViewById(R.id.btn_roll);
 
-        Typeface stylishFont = Typeface.createFromAsset(getAssets(), "fonts/Aladin-Regular.ttf");
-        rollButton.setTypeface(stylishFont);
-
-        allDiceList = new ArrayList<>(Arrays.asList(dice1, dice2, dice3, dice4, dice5, dice6, dice7, dice8, dice9));
-
-        validDices = new ArrayList<>();
-        validDices.add(dice5);//when app starts
-
-        MobileAds.initialize(this, initializationStatus -> {});
-
-        AdView adView = findViewById(R.id.adView);
-        AdRequest adRequest = new AdRequest.Builder().build();
-        adView.loadAd(adRequest);
+        findViewById(R.id.fb_settings).setOnClickListener(view -> startActivity(new Intent(getApplicationContext(), SettingsActivity.class)));
+        findViewById(R.id.ib_minus).setOnClickListener(this::minusOne);
+        findViewById(R.id.ib_plus).setOnClickListener(this::plusOne);
     }
 
+    private void initializeAd() {
+        MobileAds.initialize(this, initializationStatus -> {
+        });
+        AdRequest adRequest = new AdRequest.Builder().build();
+        adView = findViewById(R.id.adView);
+        adView.loadAd(adRequest);
+    }
 
     private void setDiceVisibility(List<ImageView> visibleList) {
         for (ImageView iView : allDiceList) {
@@ -74,40 +106,69 @@ public class MainActivity extends AppCompatActivity {
 
     private void resetDices(ArrayList<ImageView> diceList) {
         for (ImageView dice : diceList) {
-            dice.setImageDrawable(getResources().getDrawable(R.drawable.dice_none_svg));
+            dice.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.dice_none_solid, null));
         }
     }
 
     public void roll(View view) {
-        UpdateUI runner = new UpdateUI();
-        runner.execute();
-    }
-
-    private void setView(int digit, ArrayList<ImageView> diceList) {
-        for (ImageView dice : diceList) {
-            setViewForDice(dice, digit);
+        for (ImageView dice : validDices) {
+            animateDice(dice);
         }
+
+        handler.postDelayed(() -> {
+            for (ImageView dice : validDices) {
+                dice.clearAnimation(); // Stop the animation
+                int randomInt = new Random().nextInt(6) + 1;
+                setViewForDice(dice, randomInt);
+            }
+
+            int sum = 0;
+            for (ImageView dice : validDices) {
+                int randomInt = new Random().nextInt(6) + 1;
+                sum += randomInt;
+                setViewForDice(dice, randomInt);
+            }
+            String totalText = "TOTAL : " + sum;
+            total.setText(totalText);
+        }, 1000); // Delay for the duration of the animation
     }
 
-    private void setViewForDice(ImageView dice, int number) {
+    private void animateDice(ImageView dice) {
+        int randomMultiplierX = new Random().nextInt(2) * 2 - 1;//-1 or 1
+        int randomMultiplierY = new Random().nextInt(2) * 2 - 1;//-1 or 1
+        int randomMultiplierZ = new Random().nextInt(2) * 2 - 1;//-1 or 1
+        ObjectAnimator rotateX = ObjectAnimator.ofFloat(dice, "rotationX", 0f, randomMultiplierX * 1800f);
+        ObjectAnimator rotateY = ObjectAnimator.ofFloat(dice, "rotationY", 0f, randomMultiplierY * 1800f);
+        ObjectAnimator rotateZ = ObjectAnimator.ofFloat(dice, "rotation", 0f, randomMultiplierZ * 1800f);
+        rotateX.setDuration(1000);
+        rotateY.setDuration(1000);
+        rotateZ.setDuration(1000);
+
+        AnimatorSet animatorSet = new AnimatorSet();
+        animatorSet.playTogether(rotateX, rotateY, rotateZ);
+        animatorSet.start();
+    }
+
+
+    private void setViewForDice(ImageView diceView, int number) {
         switch (number) {
             case 1:
-                dice.setImageDrawable(getResources().getDrawable(R.drawable.dice_one_svg));
+                diceView.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.dice_one_solid, null));
                 break;
             case 2:
-                dice.setImageDrawable(getResources().getDrawable(R.drawable.dice_two_svg));
+                diceView.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.dice_two_solid, null));
                 break;
             case 3:
-                dice.setImageDrawable(getResources().getDrawable(R.drawable.dice_three_svg));
+                diceView.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.dice_three_solid, null));
                 break;
             case 4:
-                dice.setImageDrawable(getResources().getDrawable(R.drawable.dice_four_svg));
+                diceView.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.dice_four_solid, null));
                 break;
             case 5:
-                dice.setImageDrawable(getResources().getDrawable(R.drawable.dice_five_svg));
+                diceView.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.dice_five_solid, null));
                 break;
             case 6:
-                dice.setImageDrawable(getResources().getDrawable(R.drawable.dice_six_svg));
+                diceView.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.dice_six_solid, null));
                 break;
         }
     }
@@ -133,9 +194,6 @@ public class MainActivity extends AppCompatActivity {
     private void rearrangeDice(int number) {
         validDices.clear();
         switch (number) {
-            case 1:
-                setDiceVisibility(Collections.singletonList(dice5));
-                break;
             case 2:
                 setDiceVisibility(Arrays.asList(dice4, dice6));
                 break;
@@ -168,45 +226,46 @@ public class MainActivity extends AppCompatActivity {
         total.setText(getResources().getString(R.string.total));
     }
 
-    private class UpdateUI extends AsyncTask<String, Integer, String> {
-        private String resp = "";
 
-        @Override
-        protected void onPreExecute() {
-        }
+    @Override
+    protected void onStart() {
+        super.onStart();
+        startTimerForAds();
 
-        @Override
-        protected String doInBackground(String... params) {
-            try {
-                Random randomGenerator = new Random();
-                for (int idx = 1; idx <= 10; ++idx) {
-                    int randomInt = randomGenerator.nextInt(6) + 1;
-                    Thread.sleep(10);
-                    publishProgress(randomInt); // Calls onProgressUpdate()
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-                resp = e.getMessage();
+        SharedPreferences sharedPreferences = getSharedPreferences(getString(R.string.app_name), MODE_PRIVATE);
+
+        boolean totalVisibility = sharedPreferences.getBoolean(getString(R.string.total_visibility), true);
+        total.setVisibility(totalVisibility ? View.VISIBLE : View.INVISIBLE);
+
+        int selectedBackgroundColor = sharedPreferences.getInt(getString(R.string.selected_background), Color.parseColor("#33B5E5"));
+        mainRl.setBackgroundColor(selectedBackgroundColor);
+    }
+
+    private void startTimerForAds() {
+        resetTimer();
+        timer = new Timer();
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                new Handler(Looper.getMainLooper()).post(() -> updateTimeForAds());
             }
-            return resp;
-        }
+        }, 0, 1000); // Update every second
+    }
 
-        @Override
-        protected void onProgressUpdate(Integer... number) {
-            setView(number[0], validDices);
+    private void updateTimeForAds() {
+        SharedPreferences sharedPreferences = getSharedPreferences(getString(R.string.app_name), Context.MODE_PRIVATE);
+        long timerCutOff = sharedPreferences.getLong(getString(R.string.pause_ads_cut_off_time), System.currentTimeMillis());
+        if (timerCutOff > System.currentTimeMillis()) {
+            adView.setVisibility(View.GONE);
+        } else {
+            adView.setVisibility(View.VISIBLE);
         }
+    }
 
-        @Override
-        protected void onPostExecute(String result) {
-            int sum = 0;
-            for (ImageView dice : validDices) {
-                Random randomGenerator = new Random();
-                int randomInt = randomGenerator.nextInt(6) + 1;
-                sum += randomInt;
-                setViewForDice(dice, randomInt);
-            }
-            String totalText = "TOTAL : " + sum;
-            total.setText(totalText);
+    private void resetTimer() {
+        if (timer != null) {
+            timer.cancel();
+            timer = null;
         }
     }
 }

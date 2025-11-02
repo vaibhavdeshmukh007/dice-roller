@@ -7,8 +7,31 @@
     <string name="minus">minus</string>
     <string name="one">1</string>
     <string name="plus">plus</string>
+
+    <string name="settings">Settings</string>
+    <string name="back">Back</string>
+    <string name="background_color">Pick a Color 🎨</string>
+    <string name="selected_background">Selected Background</string>
+    <string name="blue_background">Blue Background</string>
+    <string name="gray_background">Gray Background</string>
+    <string name="green_background">Green Background</string>
+    <string name="orange_background">Orange Background</string>
+    <string name="purple_background">Purple Background</string>
+    <string name="tick_mark">Tick Mark</string>
+    <string name="total_visibility">Total Visibility</string>
+    <string name="show_total">Show TOTAL 🐵</string>
+    <string name="hide_total">Hide TOTAL 🙈</string>
+    <string name="other_apps">Our Other Apps 📱</string>
+    <string name="remove_ads">Remove ads ⏸️</string>
+    <string name="pause_ads_cut_off_time">Pause ads cut-off</string>
+    <string name="no_ads">No Ads</string>
+    <string name="no_ads_description">Watch a small video to PAUSE ALL ADS for 8 hours?</string>
+    <string name="no_ads_hrs">No ads for %1$.2f hours</string>
+    <string name="no_ads_mins">No ads for %1$d minutes</string>
+
     <!--TEST-->
     <string name="admob_app_id">ca-app-pub-3940256099942544~3347511713</string>
     <string name="banner_ad_unit_id">ca-app-pub-3940256099942544/6300978111</string>
+    <string name="rewarded_ad_unit_id">ca-app-pub-3940256099942544/5224354917</string>
 
 </resources>

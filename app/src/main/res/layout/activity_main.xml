@@ -2,63 +2,59 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:ads="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/rl_main_container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/blue_background"
     tools:context="developer.android.vd.diceroller.MainActivity">
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fb_settings"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_margin="16dp"
+        android:contentDescription="@string/settings"
+        android:src="@drawable/ic_settings" />
 
     <LinearLayout
         android:id="@+id/topPanel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="4sp"
+        android:layout_margin="16dp"
         android:gravity="center"
         android:orientation="horizontal">
 
-        <TextView
-            android:id="@+id/tv_number"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:gravity="end"
-            android:shadowColor="@android:color/white"
-            android:shadowDx="1"
-            android:shadowDy="1"
-            android:shadowRadius="1"
-            android:text="@string/number"
-            android:textAppearance="@style/TextAppearance.AppCompat.Title"
-            android:textColor="@android:color/black" />
 
         <ImageButton
-            android:layout_width="30sp"
-            android:layout_height="30sp"
+            android:id="@+id/ib_minus"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
             android:background="@drawable/ic_minus"
-            android:contentDescription="@string/minus"
-            android:onClick="minusOne" />
+            android:contentDescription="@string/minus" />
 
         <TextView
             android:id="@+id/tv_no_dice"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@drawable/spinner_bg"
+            android:background="@drawable/spinner_background"
             android:paddingStart="20sp"
             android:paddingEnd="20sp"
             android:text="@string/one"
             android:textColor="#000000"
-            android:textSize="20sp" />
+            android:textSize="32sp" />
 
         <ImageButton
-            android:layout_width="30sp"
-            android:layout_height="30sp"
+            android:id="@+id/ib_plus"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
             android:background="@drawable/ic_plus"
-            android:contentDescription="@string/plus"
-            android:onClick="plusOne" />
+            android:contentDescription="@string/plus" />
     </LinearLayout>
 
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_above="@+id/adView"
-        android:layout_below="@+id/topPanel">
+        android:layout_centerInParent="true">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -79,7 +75,7 @@
                     android:layout_gravity="start"
                     android:layout_weight="2"
                     android:contentDescription="@string/dice"
-                    android:src="@drawable/dice_none_svg"
+                    android:src="@drawable/dice_none_solid"
                     android:visibility="invisible" />
 
                 <ImageView
@@ -89,7 +85,7 @@
                     android:layout_gravity="center"
                     android:layout_weight="2"
                     android:contentDescription="@string/dice"
-                    android:src="@drawable/dice_none_svg"
+                    android:src="@drawable/dice_none_solid"
                     android:visibility="invisible" />
 
                 <ImageView
@@ -99,7 +95,7 @@
                     android:layout_gravity="end"
                     android:layout_weight="2"
                     android:contentDescription="@string/dice"
-                    android:src="@drawable/dice_none_svg"
+                    android:src="@drawable/dice_none_solid"
                     android:visibility="invisible" />
             </LinearLayout>
 
@@ -117,7 +113,7 @@
                     android:layout_gravity="start"
                     android:layout_weight="2"
                     android:contentDescription="@string/dice"
-                    android:src="@drawable/dice_none_svg"
+                    android:src="@drawable/dice_none_solid"
                     android:visibility="invisible" />
 
                 <ImageView
@@ -127,7 +123,7 @@
                     android:layout_gravity="center"
                     android:layout_weight="2"
                     android:contentDescription="@string/dice"
-                    android:src="@drawable/dice_none_svg" />
+                    android:src="@drawable/dice_none_solid" />
 
                 <ImageView
                     android:id="@+id/iv_dice6"
@@ -136,7 +132,7 @@
                     android:layout_gravity="end"
                     android:layout_weight="2"
                     android:contentDescription="@string/dice"
-                    android:src="@drawable/dice_none_svg"
+                    android:src="@drawable/dice_none_solid"
                     android:visibility="invisible" />
             </LinearLayout>
 
@@ -154,7 +150,7 @@
                     android:layout_gravity="start"
                     android:layout_weight="2"
                     android:contentDescription="@string/dice"
-                    android:src="@drawable/dice_none_svg"
+                    android:src="@drawable/dice_none_solid"
                     android:visibility="invisible" />
 
                 <ImageView
@@ -164,7 +160,7 @@
                     android:layout_gravity="center"
                     android:layout_weight="2"
                     android:contentDescription="@string/dice"
-                    android:src="@drawable/dice_none_svg"
+                    android:src="@drawable/dice_none_solid"
                     android:visibility="invisible" />
 
                 <ImageView
@@ -174,7 +170,7 @@
                     android:layout_gravity="end"
                     android:layout_weight="2"
                     android:contentDescription="@string/dice"
-                    android:src="@drawable/dice_none_svg"
+                    android:src="@drawable/dice_none_solid"
                     android:visibility="invisible" />
 
             </LinearLayout>
@@ -186,25 +182,26 @@
                 android:layout_gravity="center"
                 android:layout_margin="4sp"
                 android:gravity="center"
-                android:shadowColor="@android:color/white"
+                android:shadowColor="#cccccc"
                 android:shadowDx="2"
                 android:shadowDy="2"
                 android:shadowRadius="2"
                 android:text="@string/total"
                 android:textColor="@android:color/black"
-                android:textSize="24sp"
+                android:textSize="30sp"
                 android:textStyle="bold" />
 
             <Button
                 android:id="@+id/btn_roll"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-
                 android:layout_gravity="center"
-                android:background="@drawable/buttonshape"
+                android:backgroundTint="#000000"
                 android:gravity="center"
-                android:onClick="roll"
-                android:shadowColor="@android:color/black"
+                android:fontFamily="@font/aladin"
+                android:paddingStart="100dp"
+                android:paddingEnd="100dp"
+                android:shadowColor="#aaaaaa"
                 android:shadowDx="5"
                 android:shadowDy="5"
                 android:shadowRadius="5"
