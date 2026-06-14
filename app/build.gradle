@@ -1,35 +1,84 @@
-apply plugin: 'com.android.application'
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.jetbrains.kotlin.android)
+    alias(libs.plugins.jetbrains.kotlin.compose)
+    alias(libs.plugins.google.devtools.ksp)
+}
 
 android {
+    compileSdkVersion = 37
+
     defaultConfig {
-        applicationId "developer.android.vd.diceroller"
-        minSdkVersion 21
-        compileSdk 35
-        targetSdkVersion 35
-        versionCode 19
-        versionName "3.0.4"
-        multiDexEnabled true
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        applicationId = "developer.android.vd.diceroller"
+        minSdkVersion 26
+        targetSdkVersion 37
+        versionCode = 512
+        versionName = "5.1.2"
+        multiDexEnabled = true
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
     buildTypes {
         release {
-            minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            minifyEnabled = true
+            ndk.debugSymbolLevel = 'SYMBOL_TABLE'
+            proguardFiles(
+                    getDefaultProguardFile('proguard-android-optimize.txt'),
+                    'proguard-rules.pro'
+            )
         }
     }
-    namespace 'developer.android.vd.diceroller'
+
+    buildFeatures {
+        compose = true
+    }
+
+    namespace = "developer.android.vd.diceroller"
+}
+
+tasks.withType(KotlinCompile).configureEach {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
 }
 
 dependencies {
+    androidTestImplementation libs.androidx.espresso.core
+    androidTestImplementation libs.androidx.runner
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'androidx.appcompat:appcompat:1.7.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.2.0'
-    implementation 'com.google.android.material:material:1.12.0'
-    implementation 'androidx.activity:activity:1.10.0'
-    implementation 'com.github.yukuku:ambilwarna:2.0.1'
-    testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test:runner:1.6.2'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
-    implementation 'com.google.android.gms:play-services-ads:23.6.0'
-    implementation 'androidx.multidex:multidex:2.0.1'
+    implementation libs.androidx.activity
+    implementation libs.androidx.activity.ktx
+    implementation libs.androidx.appcompat
+    implementation libs.androidx.room.runtime
+    implementation libs.androidx.room.ktx
+    implementation libs.androidx.browser
+    implementation libs.androidx.core.ktx
+    implementation libs.androidx.multidex
+    implementation libs.billing
+    implementation libs.play.services.ads
+    implementation libs.review.ktx
+    implementation libs.gson
+    ksp libs.androidx.room.compiler
+    testImplementation libs.junit
+
+    // Jetpack Compose dependencies
+    implementation platform(libs.androidx.compose.bom)
+    implementation libs.androidx.compose.ui
+    implementation libs.androidx.compose.ui.graphics
+    implementation libs.androidx.compose.ui.tooling.preview
+    implementation libs.androidx.compose.material3
+    implementation libs.androidx.compose.material.icons.core
+    implementation libs.androidx.compose.material.icons.extended
+    implementation libs.androidx.activity.compose
+    implementation libs.androidx.lifecycle.viewmodel.compose
+    implementation libs.androidx.runtime.livedata
+    debugImplementation libs.androidx.compose.ui.tooling
 }

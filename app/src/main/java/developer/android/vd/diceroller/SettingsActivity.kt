@@ -1,326 +1,671 @@
 package developer.android.vd.diceroller
 
-import android.app.Dialog
-import android.content.ContentValues
+import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.content.SharedPreferences
 import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
-import android.net.Uri
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
-import android.view.View
-import android.view.ViewGroup
-import android.view.Window
-import android.widget.Button
-import android.widget.RatingBar
-import android.widget.RatingBar.OnRatingBarChangeListener
-import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.OnApplyWindowInsetsListener
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import com.google.android.gms.ads.AdError
-import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.FullScreenContentCallback
-import com.google.android.gms.ads.LoadAdError
-import com.google.android.gms.ads.OnUserEarnedRewardListener
-import com.google.android.gms.ads.rewarded.RewardItem
-import com.google.android.gms.ads.rewarded.RewardedAd
-import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
-import yuku.ambilwarna.AmbilWarnaDialog
-import yuku.ambilwarna.AmbilWarnaDialog.OnAmbilWarnaListener
-import java.util.Objects
-import java.util.Timer
-import java.util.TimerTask
+import androidx.activity.ComponentActivity
+import androidx.activity.addCallback
+import androidx.activity.compose.setContent
+import androidx.browser.customtabs.CustomTabsIntent
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 
-class SettingsActivity : AppCompatActivity() {
-    private var rewardedAd: RewardedAd? = null
-    private var removeAdsBtn: Button? = null
-    private var showTotal: TextView? = null
-    private var hideTotal: TextView? = null
+class SettingsActivity : ComponentActivity() {
 
-    private var sharedPreferences: SharedPreferences? = null
-    private var timer: Timer? = null
+    private lateinit var billingManager: BillingManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        this.enableEdgeToEdge()
-        setContentView(R.layout.activity_settings)
-        ViewCompat.setOnApplyWindowInsetsListener(
-            findViewById<View?>(R.id.main),
-            OnApplyWindowInsetsListener { v: View?, insets: WindowInsetsCompat? ->
-                val systemBars = insets!!.getInsets(WindowInsetsCompat.Type.systemBars())
-                v!!.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-                insets
-            })
 
-        initializeVariables()
-        handleToggle()
-        initializeAds()
-    }
+        // Setup Billing
+        billingManager = BillingManager(this)
 
-    private fun initializeVariables() {
-        val otherAppsBtn = findViewById<Button>(R.id.bt_other_apps)
-        val colorPickerBtn = findViewById<Button>(R.id.bt_color_picker)
-
-        showTotal = findViewById<TextView>(R.id.tv_show_total)
-        hideTotal = findViewById<TextView>(R.id.tv_hide_total)
-        removeAdsBtn = findViewById<Button>(R.id.bt_pause_ads)
-
-        colorPickerBtn.setOnClickListener(View.OnClickListener { view: View? ->
-            this.colorPicker(
-                view
-            )
-        })
-        removeAdsBtn!!.setOnClickListener(View.OnClickListener { view: View? -> this.pauseAds(view) })
-        otherAppsBtn.setOnClickListener(View.OnClickListener { view: View? -> this.otherApps(view) })
-
-        findViewById<View?>(R.id.ib_back).setOnClickListener(View.OnClickListener { view: View? -> finish() })
-
-        (findViewById<View?>(R.id.rr_ratings) as RatingBar).setOnRatingBarChangeListener(
-            OnRatingBarChangeListener { ratingBar: RatingBar?, rating: Float, fromUser: Boolean ->
-                if (fromUser) {
-                    openPlayStore()
-                }
-            })
-
-        sharedPreferences = getSharedPreferences(getString(R.string.app_name), MODE_PRIVATE)
-    }
-
-
-    fun colorPicker(view: View?) {
-        val selectedBackgroundColor = sharedPreferences!!.getInt(
-            getString(R.string.selected_background),
-            Color.parseColor("#33b5e5")
-        )
-
-        val ambilWarnaDialog =
-            AmbilWarnaDialog(this, selectedBackgroundColor, object : OnAmbilWarnaListener {
-                override fun onCancel(dialog: AmbilWarnaDialog?) {
-                }
-
-                override fun onOk(dialog: AmbilWarnaDialog?, color: Int) {
-                    val bgcEdit = sharedPreferences!!.edit()
-                    bgcEdit.putInt(getString(R.string.selected_background), color)
-                    bgcEdit.apply()
-                    closeWithTransition()
-                }
-            })
-        ambilWarnaDialog.show()
-    }
-
-    private fun handleToggle() {
-        toggleButton()
-
-        showTotal!!.setOnClickListener(View.OnClickListener { view: View? ->
-            setTotalVisibility(
-                false
-            )
-        })
-        hideTotal!!.setOnClickListener(View.OnClickListener { view: View? -> setTotalVisibility(true) })
-    }
-
-    private fun toggleButton() {
-        val toggleSwitch =
-            sharedPreferences!!.getBoolean(getString(R.string.total_visibility), true)
-        showTotal!!.setVisibility(if (toggleSwitch) View.VISIBLE else View.GONE)
-        hideTotal!!.setVisibility(if (toggleSwitch) View.GONE else View.VISIBLE)
-    }
-
-    private fun setTotalVisibility(visibility: Boolean) {
-        val toggleEdit = sharedPreferences!!.edit()
-        toggleEdit.putBoolean(getString(R.string.total_visibility), visibility)
-        toggleEdit.apply()
-        toggleButton()
-    }
-
-    private fun openPlayStore() {
-        val uri = Uri.parse("market://details?id=" + getPackageName())
-        val goToMarket = Intent(Intent.ACTION_VIEW, uri)
-        goToMarket.addFlags(
-            Intent.FLAG_ACTIVITY_NO_HISTORY or
-                    Intent.FLAG_ACTIVITY_NEW_DOCUMENT or
-                    Intent.FLAG_ACTIVITY_MULTIPLE_TASK
-        )
-        try {
-            startActivity(goToMarket)
-        } catch (e: Exception) {
-            val webUri =
-                Uri.parse("https://play.google.com/store/apps/details?id=" + getPackageName())
-            startActivity(Intent(Intent.ACTION_VIEW, webUri))
+        onBackPressedDispatcher.addCallback(this) {
+            closeWithAnimation()
         }
-    }
 
-    fun otherApps(view: View?) {
-        val uri = Uri.parse("market://search?q=pub:Vaibhav+Deshmukh")
-        val goToMarket = Intent(Intent.ACTION_VIEW, uri)
-        goToMarket.addFlags(
-            Intent.FLAG_ACTIVITY_NO_HISTORY or
-                    Intent.FLAG_ACTIVITY_NEW_DOCUMENT or
-                    Intent.FLAG_ACTIVITY_MULTIPLE_TASK
-        )
-        try {
-            startActivity(goToMarket)
-        } catch (e: Exception) {
-            val webUri = Uri.parse("https://play.google.com/store/search?q=pub:Vaibhav+Deshmukh")
-            startActivity(Intent(Intent.ACTION_VIEW, webUri))
-        }
-    }
+        setContent {
+            var proActive by remember { mutableStateOf(PrefsHelper.isProActive(this)) }
+            var lifetimePro by remember { mutableStateOf(PrefsHelper.isLifetimePro(this)) }
+            var remainingTime by remember { mutableStateOf(PrefsHelper.formatRemainingTime(this)) }
 
-    private fun closeWithTransition() {
-        finish()
-        overridePendingTransition(R.anim.animate_zoom_enter, R.anim.animate_zoom_exit)
-    }
+            // Establish billing connections and callbacks
+            LaunchedEffect(Unit) {
+                billingManager.setListener(object : BillingManager.BillingListener {
+                    override fun onPurchaseSuccess() {
+                        proActive = PrefsHelper.isProActive(this@SettingsActivity)
+                        lifetimePro = PrefsHelper.isLifetimePro(this@SettingsActivity)
+                        remainingTime = PrefsHelper.formatRemainingTime(this@SettingsActivity)
+                    }
 
-    private fun initializeAds() {
-        val adRequest = AdRequest.Builder().build()
-        RewardedAd.load(
-            this, getString(R.string.rewarded_ad_unit_id),
-            adRequest, object : RewardedAdLoadCallback() {
-                override fun onAdFailedToLoad(loadAdError: LoadAdError) {
-                    // Handle the error.
-                    Log.d(ContentValues.TAG, loadAdError.toString())
-                    rewardedAd = null
-                }
+                    override fun onPurchaseFailure(error: String) {
+                        Toast.makeText(this@SettingsActivity, "Purchase failed: $error", Toast.LENGTH_LONG).show()
+                    }
 
-                override fun onAdLoaded(ad: RewardedAd) {
-                    rewardedAd = ad
-                    Log.d(ContentValues.TAG, "Ad was loaded.")
-                }
-            })
-    }
+                    override fun onBillingClientReady() {}
 
-    fun pauseAds(view: View?) {
-        val dialog = Dialog(this)
-        dialog.setContentView(R.layout.ads_confirmation_dialog)
-        Objects.requireNonNull<Window?>(dialog.getWindow()).setBackgroundDrawable(
-            ColorDrawable(
-                Color.TRANSPARENT
-            )
-        )
-        Objects.requireNonNull<Window?>(dialog.getWindow())
-            .setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-
-        val ok = dialog.findViewById<Button>(R.id.bt_ok_ads_dialog)
-        ok.setOnClickListener(View.OnClickListener { view1: View? ->
-            dialog.cancel()
-            showRewardedVideoAd()
-        })
-
-        val cancel = dialog.findViewById<Button>(R.id.bt_cancel_ads_dialog)
-        cancel.setOnClickListener(View.OnClickListener { view1: View? -> dialog.cancel() })
-        dialog.show()
-    }
-
-    private fun startTimerForAds() {
-        resetTimer()
-        timer = Timer()
-        timer!!.schedule(object : TimerTask() {
-            override fun run() {
-                Handler(Looper.getMainLooper()).post(Runnable { updateTimeForAds() })
+                    override fun onPurchasePending() {
+                        Toast.makeText(this@SettingsActivity, "Purchase pending...", Toast.LENGTH_LONG).show()
+                    }
+                })
+                billingManager.startConnection()
             }
-        }, 0, 1000) // Update every second
-    }
 
-    private fun updateTimeForAds() {
-        val sharedPreferences = getSharedPreferences(getString(R.string.app_name), MODE_PRIVATE)
-        val timerCutOff = sharedPreferences.getLong(
-            getString(R.string.pause_ads_cut_off_time),
-            System.currentTimeMillis()
-        )
-        val timeRemainingHrs =
-            (timerCutOff - System.currentTimeMillis()) / (60 * 60 * 1000).toFloat()
-        if (timeRemainingHrs > 0) {
-            removeAdsBtn!!.setBackgroundColor(Color.GRAY)
-            removeAdsBtn!!.setEnabled(false)
-
-            if (timeRemainingHrs > 1) {
-                removeAdsBtn!!.setText(getString(R.string.no_ads_hrs, timeRemainingHrs))
-            } else {
-                val minutes = (timeRemainingHrs * 60).toInt()
-                removeAdsBtn!!.setText(getString(R.string.no_ads_mins, minutes))
-            }
-        } else {
-            removeAdsBtn!!.setBackgroundColor(Color.BLACK)
-            removeAdsBtn!!.setEnabled(true)
-            removeAdsBtn!!.setText(getString(R.string.remove_ads))
-        }
-    }
-
-    private fun showRewardedVideoAd() {
-        if (rewardedAd == null) {
-            Toast.makeText(
-                this,
-                "Rewarded video isn't ready, please check internet connection",
-                Toast.LENGTH_LONG
-            ).show()
-        } else {
-            rewardedAd!!.setFullScreenContentCallback(object : FullScreenContentCallback() {
-                override fun onAdClicked() {
-                    // Called when a click is recorded for an ad.
-                    Log.d(ContentValues.TAG, "Ad was clicked.")
-                }
-
-                override fun onAdDismissedFullScreenContent() {
-                    // Called when ad is dismissed.
-                    // Set the ad reference to null so you don't show the ad a second time.
-                    Log.d(ContentValues.TAG, "Ad dismissed fullscreen content.")
-                    rewardedAd = null
-                }
-
-                override fun onAdFailedToShowFullScreenContent(adError: AdError) {
-                    // Called when ad fails to show.
-                    Log.e(ContentValues.TAG, "Ad failed to show fullscreen content.")
-                    rewardedAd = null
-                }
-
-                override fun onAdImpression() {
-                    // Called when an impression is recorded for an ad.
-                    Log.d(ContentValues.TAG, "Ad recorded an impression.")
-                }
-
-                override fun onAdShowedFullScreenContent() {
-                    // Called when ad is shown.
-                    Log.d(ContentValues.TAG, "Ad showed fullscreen content.")
-                }
-            })
-
-            rewardedAd!!.show(this, OnUserEarnedRewardListener { rewardItem: RewardItem? ->
-                // Handle the reward.
-                Log.d(ContentValues.TAG, "The user earned the reward.")
-                val editor = sharedPreferences!!.edit()
-                editor.putLong(
-                    getString(R.string.pause_ads_cut_off_time),
-                    System.currentTimeMillis() + COOL_DOWN_TIME
+            DiceRollerTheme {
+                SettingsScreen(
+                    billingManager = billingManager,
+                    proActive = proActive,
+                    lifetimePro = lifetimePro,
+                    remainingTime = remainingTime,
+                    onBackClick = { closeWithAnimation() },
+                    onProStatusChanged = {
+                        proActive = PrefsHelper.isProActive(this)
+                        lifetimePro = PrefsHelper.isLifetimePro(this)
+                        remainingTime = PrefsHelper.formatRemainingTime(this)
+                    }
                 )
-                editor.apply()
-            })
+            }
         }
-    }
-
-    private fun resetTimer() {
-        if (timer != null) {
-            timer!!.cancel()
-            timer = null
-        }
-    }
-
-    override fun onStart() {
-        super.onStart()
-        startTimerForAds()
     }
 
     override fun onDestroy() {
+        billingManager.destroy()
         super.onDestroy()
-        resetTimer()
     }
 
-    companion object {
-        private val COOL_DOWN_TIME = 8 * 60 * 60 * 1000
+    private fun closeWithAnimation() {
+        setResult(RESULT_OK)
+        finishAfterTransition()
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreen(
+    billingManager: BillingManager,
+    proActive: Boolean,
+    lifetimePro: Boolean,
+    remainingTime: String,
+    onBackClick: () -> Unit,
+    onProStatusChanged: () -> Unit
+) {
+    val context = LocalContext.current
+    val scrollState = rememberScrollState()
+
+    // Preferences states
+    var selectedColor by remember { mutableStateOf(PrefsHelper.getBackgroundColor(context)) }
+    var isTotalVisible by remember { mutableStateOf(!PrefsHelper.isTotalHidden(context)) }
+    var isVibrationEnabled by remember { mutableStateOf(PrefsHelper.isVibrationEnabled(context)) }
+    var isShakeEnabled by remember { mutableStateOf(PrefsHelper.isShakeToRollEnabled(context)) }
+    var isSoundEnabled by remember { mutableStateOf(PrefsHelper.isSoundEffectsEnabled(context)) }
+
+    // Dialog flags
+    var showColorDialog by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
+    var showUpsellDialog by remember { mutableStateOf(false) }
+
+    // Rating value
+    var rating by remember { mutableFloatStateOf(0f) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Settings", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                )
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(scrollState)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // GoPro Billing Container Card
+            ProStatusCard(
+                proActive = proActive,
+                lifetimePro = lifetimePro,
+                remainingTime = remainingTime,
+                onBuyClick = { billingManager.launchPurchaseFlow(context as SettingsActivity) },
+                onRestoreClick = {
+                    billingManager.restorePurchases { restored ->
+                        if (restored) {
+                            Toast.makeText(context, "Purchases restored successfully! ✅", Toast.LENGTH_SHORT).show()
+                            onProStatusChanged()
+                        } else {
+                            Toast.makeText(context, "No previous Pro purchases found.", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            )
+
+            Divider(color = ComposeColor.LightGray.copy(alpha = 0.5f), thickness = 1.dp)
+
+            // Background Color Picker Button
+            Card(
+                onClick = { showColorDialog = true },
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, ComposeColor.LightGray.copy(alpha = 0.4f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Background Color 🎨",
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(ComposeColor(selectedColor))
+                            .border(1.dp, ComposeColor.Gray, CircleShape)
+                    )
+                }
+            }
+
+            // Dice Theme Button
+            Card(
+                onClick = {
+                    if (lifetimePro) {
+                        showThemeDialog = true
+                    } else {
+                        showUpsellDialog = true
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, ComposeColor.LightGray.copy(alpha = 0.4f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Choose Dice Theme 🎲",
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    val currentDiceColor = PrefsHelper.getDiceColor(context)
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(if (currentDiceColor == Color.TRANSPARENT) ComposeColor.White else ComposeColor(currentDiceColor))
+                            .border(1.dp, ComposeColor.Gray, RoundedCornerShape(4.dp))
+                    )
+                }
+            }
+
+            Divider(color = ComposeColor.LightGray.copy(alpha = 0.5f), thickness = 1.dp)
+
+            // Switch Toggles
+            SettingsSwitchRow(
+                title = "Show Total",
+                description = "Show the sum of all rolled dice",
+                checked = isTotalVisible,
+                onCheckedChange = {
+                    isTotalVisible = it
+                    PrefsHelper.setTotalHidden(context, !it)
+                }
+            )
+
+            SettingsSwitchRow(
+                title = "Enable Vibration",
+                description = "Haptic feedback on clicks and rolls",
+                checked = isVibrationEnabled,
+                onCheckedChange = {
+                    isVibrationEnabled = it
+                    PrefsHelper.setVibrationEnabled(context, it)
+                }
+            )
+
+            SettingsSwitchRow(
+                title = "Shake to Roll",
+                description = "Roll the dice by shaking the device",
+                checked = isShakeEnabled,
+                onCheckedChange = {
+                    isShakeEnabled = it
+                    PrefsHelper.setShakeToRollEnabled(context, it)
+                }
+            )
+
+            SettingsSwitchRow(
+                title = "Sound Effects",
+                description = "Play synthesized clack sounds when rolling",
+                checked = isSoundEnabled,
+                onCheckedChange = {
+                    isSoundEnabled = it
+                    PrefsHelper.setSoundEffectsEnabled(context, it)
+                }
+            )
+
+            Divider(color = ComposeColor.LightGray.copy(alpha = 0.5f), thickness = 1.dp)
+
+            // Star Rating component
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Enjoying the app? Rate us!",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    (1..5).forEach { starIndex ->
+                        val isSelected = rating >= starIndex
+                        IconButton(
+                            onClick = {
+                                rating = starIndex.toFloat()
+                                if (rating >= 4f) {
+                                    val marketUri = "market://details?id=${context.packageName}".toUri()
+                                    try {
+                                        context.startActivity(Intent(Intent.ACTION_VIEW, marketUri))
+                                    } catch (e: ActivityNotFoundException) {
+                                        val webUrl = "https://play.google.com/store/apps/details?id=${context.packageName}"
+                                        context.startActivity(Intent(Intent.ACTION_VIEW, webUrl.toUri()))
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = if (isSelected) Icons.Filled.Star else Icons.Outlined.Star,
+                                contentDescription = null,
+                                tint = if (isSelected) ColorPrimary else ComposeColor.Gray,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Other Apps link button
+            Button(
+                onClick = {
+                    val developerId = "Vaibhav+Deshmukh"
+                    val marketUri = "market://search?q=pub:$developerId".toUri()
+                    val marketIntent = Intent(Intent.ACTION_VIEW, marketUri)
+                    try {
+                        context.startActivity(marketIntent)
+                    } catch (e: ActivityNotFoundException) {
+                        val webUrl = "https://play.google.com/store/apps/developer?id=$developerId"
+                        val customTabsIntent = CustomTabsIntent.Builder()
+                            .setShowTitle(true)
+                            .setShareState(CustomTabsIntent.SHARE_STATE_ON)
+                            .setToolbarColor(ContextCompat.getColor(context, R.color.colorPrimary))
+                            .setStartAnimations(context, android.R.anim.fade_in, android.R.anim.fade_out)
+                            .setExitAnimations(context, android.R.anim.fade_in, android.R.anim.fade_out)
+                            .build()
+                        customTabsIntent.launchUrl(context, webUrl.toUri())
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Text(
+                    text = "Our Other Apps 📱",
+                    color = ComposeColor.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            }
+        }
+    }
+
+    // Dialog: Background Color Picker
+    if (showColorDialog) {
+        val colors = listOf("Slate Dark 🌑", "Nordic Light ❄️", "Soft Lavender 🪻", "Mint Breeze 🍃", "Peach Cream 🍑", "Classic White 🏳️")
+        val colorValues = listOf(
+            Color.parseColor("#0F172A"),
+            Color.parseColor("#F0F4F8"),
+            Color.parseColor("#F5F3FF"),
+            Color.parseColor("#ECFDF5"),
+            Color.parseColor("#FFF7ED"),
+            Color.WHITE
+        )
+
+        AlertDialog(
+            onDismissRequest = { showColorDialog = false },
+            title = { Text("Choose Background Color", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    colors.forEachIndexed { idx, label ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    val valColor = colorValues[idx]
+                                    selectedColor = valColor
+                                    PrefsHelper.saveBackgroundColor(context, valColor)
+                                    showColorDialog = false
+                                    (context as? SettingsActivity)?.setResult(android.app.Activity.RESULT_OK)
+                                    (context as? SettingsActivity)?.finishAfterTransition()
+                                }
+                                .padding(vertical = 12.dp, horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clip(CircleShape)
+                                    .background(ComposeColor(colorValues[idx]))
+                                    .border(1.dp, ComposeColor.Gray, CircleShape)
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(text = label, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showColorDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Dialog: Dice Themes
+    if (showThemeDialog) {
+        val themes = listOf("Classic (White)", "Golden 🏆", "Blood Red 🩸", "Neon Green 🍏", "Midnight Purple 🍇")
+        val colors = listOf(
+            Color.TRANSPARENT,
+            Color.parseColor("#FFD700"),
+            Color.parseColor("#8B0000"),
+            Color.parseColor("#39FF14"),
+            Color.parseColor("#4B0082")
+        )
+
+        AlertDialog(
+            onDismissRequest = { showThemeDialog = false },
+            title = { Text("Choose Dice Theme", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    themes.forEachIndexed { idx, label ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    PrefsHelper.saveDiceColor(context, colors[idx])
+                                    Toast.makeText(context, "$label applied!", Toast.LENGTH_SHORT).show()
+                                    showThemeDialog = false
+                                }
+                                .padding(vertical = 12.dp, horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(if (colors[idx] == Color.TRANSPARENT) ComposeColor.White else ComposeColor(colors[idx]))
+                                    .border(1.dp, ComposeColor.Gray, RoundedCornerShape(4.dp))
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(text = label, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showThemeDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Dialog: Upsell Custom Premium Theme dialog
+    if (showUpsellDialog) {
+        AlertDialog(
+            onDismissRequest = { showUpsellDialog = false },
+            title = { Text("Premium Feature 💎", fontWeight = FontWeight.Bold) },
+            text = {
+                Text("Dice Customization is an exclusive feature for Lifetime Pro members. It's not available in the rewarded trial.\n\nReady to get your permanent gold dice?")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showUpsellDialog = false
+                        billingManager.launchPurchaseFlow(context as SettingsActivity)
+                    }
+                ) {
+                    Text("Go Pro")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showUpsellDialog = false }) {
+                    Text("Maybe Later")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun ProStatusCard(
+    proActive: Boolean,
+    lifetimePro: Boolean,
+    remainingTime: String,
+    onBuyClick: () -> Unit,
+    onRestoreClick: () -> Unit
+) {
+    val gradientBrush = remember {
+        Brush.linearGradient(
+            colors = listOf(PremiumPurpleStart, PremiumPurpleEnd)
+        )
+    }
+
+    val trialBrush = remember {
+        Brush.linearGradient(
+            colors = listOf(GreenSoft, ComposeColor.White)
+        )
+    }
+
+    when {
+        lifetimePro -> {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = GreenSoft)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Lifetime Pro Active ✅",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Black,
+                        color = TextPrimary
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Thank you for your support! You have permanent access to all features and themes.",
+                        fontSize = 13.sp,
+                        color = TextSecondary,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+        proActive -> {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(trialBrush)
+                        .padding(16.dp)
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Trial Active ⏳",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Black,
+                            color = TextPrimary
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Expires in: $remainingTime. Upgrade to Lifetime for permanent access and exclusive themes!",
+                            fontSize = 13.sp,
+                            color = TextSecondary,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Button(
+                                onClick = onBuyClick,
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary)
+                            ) {
+                                Text("Upgrade to Lifetime 💎", fontSize = 12.sp, color = ComposeColor.White)
+                            }
+                            OutlinedButton(
+                                onClick = onRestoreClick,
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Restore", fontSize = 12.sp, color = TextPrimary)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        else -> {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(gradientBrush)
+                        .padding(16.dp)
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Upgrade to Pro 💎",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Black,
+                            color = ComposeColor.White
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Remove ads forever and unlock all advanced dice and themes.",
+                            fontSize = 13.sp,
+                            color = ComposeColor.White.copy(alpha = 0.9f),
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Button(
+                                onClick = onBuyClick,
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = ComposeColor.White)
+                            ) {
+                                Text("Buy Pro", fontSize = 12.sp, color = ColorPrimary)
+                            }
+                            Button(
+                                onClick = onRestoreClick,
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = ComposeColor.White.copy(alpha = 0.2f))
+                            ) {
+                                Text("Restore", fontSize = 12.sp, color = ComposeColor.White)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SettingsSwitchRow(
+    title: String,
+    description: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(text = description, color = TextSecondary, fontSize = 12.sp)
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(checkedThumbColor = ColorPrimary)
+        )
     }
 }

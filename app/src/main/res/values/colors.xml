@@ -1,6 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#3F51B5</color>
-    <color name="colorPrimaryDark">#303F9F</color>
-    <color name="colorAccent">#ff4081</color>
+    <color name="colorPrimary">#6366F1</color>
+    <color name="colorPrimaryDark">#4F46E5</color>
+    <color name="colorAccent">#EC4899</color>
+    <color name="default_background">#33b5e5</color>
+    <color name="dividerGray">#c0c0c0</color>
+    <color name="launcher_background">#FED2AF</color>
+
+    <color name="green_soft">#E1F5FE</color> <!-- Light blue/green for Pro -->
+
+    <!-- Premium Redesign Color Palette -->
+    <color name="card_surface">#FFFFFF</color>
+    <color name="card_outline">#E5E7EB</color>
+    <color name="text_primary">#1F2937</color>
+    <color name="text_secondary">#6B7280</color>
+    
+    <color name="premium_purple_start">#6366F1</color>
+    <color name="premium_purple_end">#8B5CF6</color>
+    
+    <color name="premium_gold_start">#FFD700</color>
+    <color name="premium_gold_end">#FFA500</color>
+    <color name="premium_gold_center">#FFC800</color>
+    
+    <color name="bg_pill_control_solid">#F3F4F6</color>
+    <color name="colorAccentPremium">#EC4899</color>
 </resources>

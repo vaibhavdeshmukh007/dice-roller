@@ -7,19 +7,21 @@
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
-# Add any project specific keep options here:
+# Check your dependencies proguard rules as they might override this.
+# By default, R8 will obfuscate all your app code (including Security.kt and BillingManager.kt) 
+# because there are no -keep rules for them.
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Flatten package hierarchy to make reversing harder
+-repackageclasses ''
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Strip out logs to prevent exposing verification logic via logcat during runtime analysis
+-assumenosideeffects class android.util.Log {
+    public static boolean isLoggable(java.lang.String, int);
+    public static int v(...);
+    public static int i(...);
+    public static int w(...);
+    public static int d(...);
+    public static int e(...);
+}
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Obfuscate strings (Note: R8 does basic string sharing; dedicated tools like DexGuard are better for string encryption)
