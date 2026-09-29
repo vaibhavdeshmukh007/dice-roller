@@ -1,6 +1,8 @@
 package developer.android.vd.diceroller
 
 import android.content.Intent
+import android.content.ActivityNotFoundException
+import android.net.Uri
 import android.graphics.Color
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -18,6 +20,8 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -79,8 +83,10 @@ class MainActivity : ComponentActivity() {
     private val isProActive = mutableStateOf(false)
     private val isLifetimePro = mutableStateOf(false)
     private val backgroundColorState = mutableStateOf(Color.WHITE)
+    private val diceColorState = mutableStateOf(Color.TRANSPARENT)
     private val remainingMillis = mutableStateOf(0L)
     private val isTotalHidden = mutableStateOf(false)
+    private val showReviewDialog = mutableStateOf(false)
 
     private val countdownHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private val countdownRunnable = object : Runnable {
@@ -119,9 +125,32 @@ class MainActivity : ComponentActivity() {
                     isProActive = isProActive.value,
                     isLifetimePro = isLifetimePro.value,
                     backgroundColor = backgroundColorState.value,
+                    diceColor = diceColorState.value,
                     remainingMillis = remainingMillis.value,
                     isTotalHidden = isTotalHidden.value,
                     isAdDelayed = isAdDelayed,
+                    showReviewDialog = showReviewDialog.value,
+                    onReviewClick = {
+                        showReviewDialog.value = false
+                        launchReviewFlow {
+                            reviewInProgress = false
+                        }
+                    },
+                    onReviewLaterClick = {
+                        showReviewDialog.value = false
+                        PrefsHelper.setReviewRemindLater(this@MainActivity, 3)
+                        reviewInProgress = false
+                    },
+                    onReviewNeverClick = {
+                        showReviewDialog.value = false
+                        PrefsHelper.markReviewAsked(this@MainActivity)
+                        reviewInProgress = false
+                    },
+                    onReviewDismiss = {
+                        showReviewDialog.value = false
+                        PrefsHelper.postponeReviewRollCount(this@MainActivity, PrefsHelper.REVIEW_INTERVAL)
+                        reviewInProgress = false
+                    },
                     onPlusClick = { viewModel.increaseDice() },
                     onMinusClick = { viewModel.decreaseDice() },
                     onDiceClick = { idx -> viewModel.toggleDiceLock(idx) },
@@ -174,6 +203,7 @@ class MainActivity : ComponentActivity() {
 
     private fun applySavedSettings() {
         backgroundColorState.value = PrefsHelper.getBackgroundColor(this)
+        diceColorState.value = PrefsHelper.getDiceColor(this)
         isTotalHidden.value = PrefsHelper.isTotalHidden(this)
         updateProStatusBanner()
     }
@@ -208,16 +238,50 @@ class MainActivity : ComponentActivity() {
 
     fun maybeAskForReviewAfterValue() {
         if (reviewInProgress) return
-        val rollCount = PrefsHelper.getRollCount(this)
-
-        if (rollCount < 15 || rollCount % PrefsHelper.REVIEW_INTERVAL != 0) return
+        if (!PrefsHelper.shouldAskForReview(this)) return
 
         reviewInProgress = true
-        val reviewManager = ReviewManagerFactory.create(this)
-        reviewManager.requestReviewFlow().addOnCompleteListener { task ->
+        showReviewDialog.value = true
+    }
+
+    private fun launchReviewFlow(onComplete: () -> Unit = {}) {
+        val manager = ReviewManagerFactory.create(this)
+        val request = manager.requestReviewFlow()
+        request.addOnCompleteListener { task ->
             if (task.isSuccessful) {
-                reviewManager.launchReviewFlow(this, task.result)
+                val reviewInfo = task.result
+                val startTime = System.currentTimeMillis()
+                
+                val flow = manager.launchReviewFlow(this, reviewInfo)
+                flow.addOnCompleteListener { _ ->
+                    val duration = System.currentTimeMillis() - startTime
+                    
+                    // The API doesn't tell us if the dialog was shown.
+                    // If it finished suspiciously fast (< 400ms), it was likely suppressed
+                    // by Google (quota reached or user already reviewed).
+                    // In this case, we fallback to the Play Store page.
+                    if (duration < 400) {
+                        redirectToPlayStore()
+                    }
+                    
+                    PrefsHelper.markReviewAsked(this) // Don't ask again after trying to show it
+                    onComplete()
+                }
+            } else {
+                // Fallback to Play Store URL if the API request itself fails
+                redirectToPlayStore()
+                PrefsHelper.markReviewAsked(this)
+                onComplete()
             }
+        }
+    }
+
+    private fun redirectToPlayStore() {
+        val packageName = packageName
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName")))
+        } catch (e: ActivityNotFoundException) {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$packageName")))
         }
     }
 
@@ -354,9 +418,15 @@ fun MainScreen(
     isProActive: Boolean,
     isLifetimePro: Boolean,
     backgroundColor: Int,
+    diceColor: Int,
     remainingMillis: Long,
     isTotalHidden: Boolean,
     isAdDelayed: Boolean,
+    showReviewDialog: Boolean,
+    onReviewClick: () -> Unit,
+    onReviewLaterClick: () -> Unit,
+    onReviewNeverClick: () -> Unit,
+    onReviewDismiss: () -> Unit,
     onPlusClick: () -> Unit,
     onMinusClick: () -> Unit,
     onDiceClick: (Int) -> Unit,
@@ -399,8 +469,8 @@ fun MainScreen(
             val count = state.diceCount
             val visibleIndices = getVisibleIndicesForCount(count)
             val durationScale = 1f + ((count - 1) / 20f)
-            val rollDuration = (160L * durationScale).toInt()
-            val staggerDelay = (20L * durationScale).toLong()
+            val rollDuration = (300L * durationScale).toInt()
+            val staggerDelay = (30L * durationScale).toLong()
 
             coroutineScope {
                 visibleIndices.forEachIndexed { index, pos ->
@@ -418,7 +488,7 @@ fun MainScreen(
 
                             launch {
                                 rotations[pos - 1].animateTo(
-                                    targetValue = 360f,
+                                    targetValue = 720f,
                                     animationSpec = tween(rollDuration, easing = FastOutSlowInEasing)
                                 )
                                 rotations[pos - 1].snapTo(0f)
@@ -432,26 +502,15 @@ fun MainScreen(
                 }
             }
 
-            val totalDelay = rollDuration + (visibleIndices.size * staggerDelay)
-            delay(totalDelay)
-
-            coroutineScope {
-                visibleIndices.forEachIndexed { index, pos ->
-                    val isLocked = state.lockedIndices.contains(index)
-                    if (!isLocked) {
-                        launch {
-                            blurs[pos - 1].animateTo(10f, tween(20))
-                            blurs[pos - 1].animateTo(0f, tween(80))
-                        }
-                    }
-                }
-            }
-
-            delay(50)
             onRollAnimationFinished()
             (context as? MainActivity)?.maybeAskForReviewAfterValue()
         }
     }
+
+    SystemBarsColor(
+        statusBarColor = backgroundColor,
+        darkIcons = !isDark
+    )
 
     Box(
         modifier = Modifier
@@ -584,17 +643,24 @@ fun MainScreen(
                         scales = scales,
                         blurs = blurs,
                         isRolling = state.isRolling,
+                        isLifetimePro = isLifetimePro,
+                        isProActive = isProActive,
+                        diceColor = diceColor,
                         onDiceClick = onDiceClick
                     )
 
                     // Total Text
-                    if (!isTotalHidden && !state.results.all { it == 0 } && !state.isRolling) {
+                    if (!isTotalHidden && !state.results.all { it == 0 }) {
+                        val finalAlpha = if (state.isRolling) 0f else 1f
                         Spacer(modifier = Modifier.height(20.dp))
                         Text(
                             text = "Total: ${state.total}",
                             color = textColor,
                             fontSize = 32.sp,
-                            fontWeight = FontWeight.Black
+                            fontWeight = FontWeight.Black,
+                            modifier = Modifier.graphicsLayer {
+                                alpha = finalAlpha
+                            }
                         )
                     }
 
@@ -869,7 +935,10 @@ fun MainScreen(
             onDismissRequest = { showTypeChooser = false },
             title = { Text("Choose Dice", fontWeight = FontWeight.Bold) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     DiceType.entries.forEach { type ->
                         val isLocked = type.proOnly && !isProActive
                         Row(
@@ -915,55 +984,170 @@ fun MainScreen(
     if (showAdUpsell) {
         AlertDialog(
             onDismissRequest = { showAdUpsell = false },
-            title = { Text(if (isProActive) "Lifetime Pro Active ✅" else "Try Pro for Free! 🎁", fontWeight = FontWeight.Bold) },
+            title = {
+                Text(
+                    text = when {
+                        isLifetimePro -> "Lifetime Pro Active ✅"
+                        isProActive -> "Trial Active ⚡"
+                        else -> "Unlock Pro Features 💎"
+                    },
+                    fontWeight = FontWeight.Bold
+                )
+            },
             text = {
-                if (isLifetimePro) {
-                    Text("You have permanent access to all Pro features, advanced dice, and custom themes forever!\n\nThank you for your support.")
-                } else if (isProActive) {
-                    val timeLeftStr = PrefsHelper.formatRemainingTime(context)
-                    Text("Pro features are unlocked for your 6-hour trial.\n\nAdvanced dice and unlimited history available for $timeLeftStr.")
-                } else {
-                    Text(
-                        "Get full access to premium features:\n\n" +
-                        "• Advanced dice (d10, d12, d20)\n" +
-                        "• Unlimited roll history\n" +
-                        "• No banner ads"
-                    )
-                }
-            },
-            confirmButton = {
-                if (!isLifetimePro) {
-                    Button(
-                        onClick = {
-                            showAdUpsell = false
-                            onBuyLifetimeClick()
-                        }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    if (isLifetimePro) {
+                        Text("You have permanent access to all Pro features, advanced dice, and custom themes forever!\n\nThank you for your support.")
+                    } else if (isProActive) {
+                        val timeLeftStr = PrefsHelper.formatRemainingTime(context)
+                        Text("Pro features are unlocked for your 6-hour trial.\n\nAdvanced dice and unlimited history available for $timeLeftStr. Upgrade to Lifetime Pro to unlock custom themes & permanent ad removal!")
+                    } else {
+                        Text(
+                            "Get full access to all premium features:\n\n" +
+                            "• Advanced dice (d10, d12, d20)\n" +
+                            "• Unlimited roll history\n" +
+                            "• No banner ads\n\n" +
+                            "Choose an option below to unlock Pro features:"
+                        )
+                    }
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(if (isProActive) "Upgrade to Lifetime 💎" else "Buy Lifetime Pro 💎")
-                    }
-                } else {
-                    Button(onClick = { showAdUpsell = false }) {
-                        Text("Awesome")
+                        if (isLifetimePro) {
+                            Button(
+                                onClick = { showAdUpsell = false },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary)
+                            ) {
+                                Text("Awesome", color = ComposeColor.White, fontWeight = FontWeight.Bold)
+                            }
+                        } else if (isProActive) {
+                            Button(
+                                onClick = {
+                                    showAdUpsell = false
+                                    onBuyLifetimeClick()
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary)
+                            ) {
+                                Text("Upgrade to Lifetime 💎", color = ComposeColor.White, fontWeight = FontWeight.Bold)
+                            }
+                            TextButton(
+                                onClick = { showAdUpsell = false },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Got it", textAlign = TextAlign.Center)
+                            }
+                        } else {
+                            Button(
+                                onClick = {
+                                    showAdUpsell = false
+                                    onWatchAdClick()
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = ComposeColor(0xFF2E7D32))
+                            ) {
+                                Text("Try Pro Free for 6h (Watch Ad) 🎬", color = ComposeColor.White, fontWeight = FontWeight.Bold)
+                            }
+                            Button(
+                                onClick = {
+                                    showAdUpsell = false
+                                    onBuyLifetimeClick()
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary)
+                            ) {
+                                Text("Buy Lifetime Pro 💎", color = ComposeColor.White, fontWeight = FontWeight.Bold)
+                            }
+                            TextButton(
+                                onClick = { showAdUpsell = false },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Maybe Later", textAlign = TextAlign.Center)
+                            }
+                        }
                     }
                 }
             },
-            dismissButton = {
-                Row {
-                    if (!isProActive) {
-                        TextButton(
-                            onClick = {
-                                showAdUpsell = false
-                                onWatchAdClick()
-                            }
+            confirmButton = {},
+            dismissButton = null
+        )
+    }
+
+    // Dialog: Enjoying Dice Roller (Review Prompt)
+    if (showReviewDialog) {
+        AlertDialog(
+            onDismissRequest = onReviewDismiss,
+            title = {
+                Text(
+                    text = "Enjoying Dice Roller? 🎲",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "Your feedback helps us make the app even better! Would you mind taking a moment to rate it?"
+                    )
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Button(
+                            onClick = onReviewClick,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary)
                         ) {
-                            Text("Watch Ad (6h) 🎬")
+                            Text("Review ⭐️", color = ComposeColor.White, fontWeight = FontWeight.Bold)
+                        }
+                        Button(
+                            onClick = onReviewLaterClick,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isDark) ComposeColor(0xFF334155) else ComposeColor(0xFFE5E7EB)
+                            )
+                        ) {
+                            Text(
+                                text = "Later 🕒",
+                                color = if (isDark) ComposeColor.White else TextPrimary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        TextButton(
+                            onClick = onReviewNeverClick,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Never 🚫",
+                                color = if (isDark) ComposeColor.LightGray else TextSecondary,
+                                textAlign = TextAlign.Center
+                            )
                         }
                     }
-                    TextButton(onClick = { showAdUpsell = false }) {
-                        Text(if (isProActive) "Got it" else "Maybe Later")
-                    }
                 }
-            }
+            },
+            confirmButton = {},
+            dismissButton = null
         )
     }
 }
@@ -978,6 +1162,9 @@ fun DiceGrid(
     scales: List<Animatable<Float, *>>,
     blurs: List<Animatable<Float, *>>,
     isRolling: Boolean,
+    isLifetimePro: Boolean,
+    isProActive: Boolean,
+    diceColor: Int,
     onDiceClick: (Int) -> Unit
 ) {
     val visibleIndices = getVisibleIndicesForCount(count)
@@ -1011,6 +1198,9 @@ fun DiceGrid(
                                 scale = scale,
                                 blur = blur,
                                 isRolling = isRolling,
+                                isLifetimePro = isLifetimePro,
+                                isProActive = isProActive,
+                                diceColor = diceColor,
                                 onClick = { onDiceClick(indexInList) }
                             )
                         }
@@ -1032,16 +1222,14 @@ fun DiceView(
     scale: Float,
     blur: Float,
     isRolling: Boolean,
+    isLifetimePro: Boolean,
+    isProActive: Boolean,
+    diceColor: Int,
     onClick: () -> Unit
 ) {
-    val context = LocalContext.current
-    val isPro = remember { PrefsHelper.isProActive(context) }
-    val isLifetime = remember { PrefsHelper.isLifetimePro(context) }
-
-    val tintColor = remember(isLifetime, isLocked) {
-        if (isLifetime && !isLocked) {
-            val color = PrefsHelper.getDiceColor(context)
-            if (color != Color.TRANSPARENT) ComposeColor(color) else null
+    val tintColor = remember(isLifetimePro, isLocked, diceColor) {
+        if (isLifetimePro && !isLocked) {
+            if (diceColor != Color.TRANSPARENT) ComposeColor(diceColor) else null
         } else null
     }
 
@@ -1054,8 +1242,8 @@ fun DiceView(
         }
     }
 
-    val shapeAlpha = if (isPro) 1.0f else 0.92f
-    val textAlpha = if (isPro) 1.0f else 0.92f
+    val shapeAlpha = if (isProActive) 1.0f else 0.92f
+    val textAlpha = if (isProActive) 1.0f else 0.92f
 
     Box(
         modifier = Modifier
@@ -1064,9 +1252,6 @@ fun DiceView(
                 rotationZ = rotation,
                 scaleX = scale,
                 scaleY = scale
-            )
-            .then(
-                if (blur > 0f) Modifier.blur(blur.dp) else Modifier
             )
             .background(
                 color = if (isLocked) ComposeColor(0xFFFFF0F6) else ComposeColor(0xFFFAFAFA),

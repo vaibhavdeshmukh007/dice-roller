@@ -1,25 +1,22 @@
 [versions]
 activity = "1.13.0"
-agp = "9.2.1"
-appcompat = "1.7.1"
-billing = "9.0.0"
+agp = "9.4.1"
+appcompat = "1.8.0"
+billing = "9.1.0"
 browser = "1.10.0"
-constraintlayout = "2.2.1"
-coreKtx = "1.19.0"
+coreKtx = "1.19.1"
 espressoCore = "3.7.0"
-fragmentKtx = "1.8.9"
 gson = "2.14.0"
 junit = "4.13.2"
-kotlin = "2.4.0"
+kotlin = "2.4.20"
 ksp = "2.3.9"
-material = "1.14.0"
 multidex = "2.0.1"
-playServicesAds = "25.3.0"
+playServicesAds = "25.5.0"
 reviewKtx = "2.0.2"
-room = "2.8.4"
+room = "2.8.5"
 runner = "1.7.0"
-composeBom = "2026.05.01"
-lifecycleCompose = "2.10.0"
+composeBom = "2026.09.00"
+lifecycleCompose = "2.11.0"
 
 [libraries]
 androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
@@ -27,10 +24,8 @@ androidx-activity-ktx = { group = "androidx.activity", name = "activity-ktx", ve
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activity" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
-androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
-androidx-fragment-ktx = { group = "androidx.fragment", name = "fragment-ktx", version.ref = "fragmentKtx" }
 androidx-multidex = { group = "androidx.multidex", name = "multidex", version.ref = "multidex" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
@@ -39,7 +34,6 @@ androidx-runner = { group = "androidx.test", name = "runner", version.ref = "run
 billing = { group = "com.android.billingclient", name = "billing", version.ref = "billing" }
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 play-services-ads = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "playServicesAds" }
 review-ktx = { group = "com.google.android.play", name = "review-ktx", version.ref = "reviewKtx" }
 

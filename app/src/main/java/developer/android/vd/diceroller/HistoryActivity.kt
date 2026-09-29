@@ -50,6 +50,11 @@ fun HistoryScreen(
     viewModel: MainViewModel,
     onBackClick: () -> Unit
 ) {
+    SystemBarsColor(
+        statusBarColor = android.graphics.Color.WHITE,
+        darkIcons = true
+    )
+
     val history by viewModel.rollHistory.observeAsState(emptyList())
     val context = androidx.compose.ui.platform.LocalContext.current
     val isPro = remember { PrefsHelper.isProActive(context) }

@@ -17,6 +17,8 @@ object PrefsHelper {
     private const val PRO_TRIAL_DURATION_HOURS = 6
     private const val KEY_PRO_USED = "pro_used"
     private const val KEY_REVIEW_ASKED = "review_asked"
+    private const val KEY_REVIEW_REMIND_LATER_TIME = "review_remind_later_time"
+    private const val KEY_REVIEW_NEXT_ROLL_COUNT = "review_next_roll_count"
     private const val KEY_ROLL_COUNT = "roll_count"
     private const val KEY_SHAKE_TO_ROLL = "shake_to_roll"
     private const val KEY_SOUND_EFFECTS = "sound_effects"
@@ -25,11 +27,6 @@ object PrefsHelper {
     fun markProUsed(context: Context) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit { putBoolean(KEY_PRO_USED, true) }
-    }
-
-    fun hasUsedPro(context: Context): Boolean {
-        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .getBoolean(KEY_PRO_USED, false)
     }
 
     fun incrementRollCount(context: Context): Int {
@@ -46,12 +43,33 @@ object PrefsHelper {
 
     fun shouldAskForReview(context: Context): Boolean {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return !prefs.getBoolean(KEY_REVIEW_ASKED, false)
+        if (prefs.getBoolean(KEY_REVIEW_ASKED, false)) {
+            return false
+        }
+        val remindTime = prefs.getLong(KEY_REVIEW_REMIND_LATER_TIME, 0L)
+        if (System.currentTimeMillis() < remindTime) {
+            return false
+        }
+        val rollCount = getRollCount(context)
+        val nextRollCount = prefs.getInt(KEY_REVIEW_NEXT_ROLL_COUNT, 15)
+        return rollCount >= nextRollCount
     }
 
     fun markReviewAsked(context: Context) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit { putBoolean(KEY_REVIEW_ASKED, true) }
+    }
+
+    fun setReviewRemindLater(context: Context, days: Int = 3) {
+        val remindTime = System.currentTimeMillis() + TimeUnit.DAYS.toMillis(days.toLong())
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit { putLong(KEY_REVIEW_REMIND_LATER_TIME, remindTime) }
+    }
+
+    fun postponeReviewRollCount(context: Context, n: Int = REVIEW_INTERVAL) {
+        val currentRoll = getRollCount(context)
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit { putInt(KEY_REVIEW_NEXT_ROLL_COUNT, currentRoll + n) }
     }
 
 
@@ -106,12 +124,6 @@ object PrefsHelper {
     }
 
 
-    fun getDiceType(context: Context): DiceType {
-        val name = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .getString(KEY_DICE_TYPE, DiceType.D6.name)
-        return DiceType.valueOf(name!!)
-    }
-
     fun setDiceType(context: Context, diceType: DiceType) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit { putString(KEY_DICE_TYPE, diceType.name) }
@@ -162,7 +174,6 @@ object PrefsHelper {
         }
     }
 
-
     fun activateProTrial(context: Context) {
         val expiresAt = System.currentTimeMillis() + PRO_TRIAL_DURATION_HOURS * 60 * 60 * 1000
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -171,8 +182,8 @@ object PrefsHelper {
 
     fun setProPurchased(context: Context) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit {
-                putBoolean(KEY_PRO_PURCHASED, true)
-                remove(KEY_PRO_TRIAL_EXPIRES_AT) // cleanup
-            }
+            putBoolean(KEY_PRO_PURCHASED, true)
+            remove(KEY_PRO_TRIAL_EXPIRES_AT) // cleanup
+        }
     }
 }

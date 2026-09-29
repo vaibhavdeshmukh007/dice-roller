@@ -11,6 +11,10 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import android.app.Activity
 
 // Color system
 val ColorPrimary = Color(0xFF6366F1)
@@ -75,4 +79,19 @@ fun DiceRollerTheme(
         typography = AppTypography,
         content = content
     )
+}
+
+@Composable
+fun SystemBarsColor(statusBarColor: Int, darkIcons: Boolean) {
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val activity = view.context as? Activity
+            activity?.window?.let { window ->
+                window.statusBarColor = statusBarColor
+                val insetsController = WindowCompat.getInsetsController(window, view)
+                insetsController.isAppearanceLightStatusBars = darkIcons
+            }
+        }
+    }
 }

@@ -1,9 +1,5 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.jetbrains.kotlin.android)
     alias(libs.plugins.jetbrains.kotlin.compose)
     alias(libs.plugins.google.devtools.ksp)
 }
@@ -15,9 +11,8 @@ android {
         applicationId = "developer.android.vd.diceroller"
         minSdkVersion 26
         targetSdkVersion 37
-        versionCode = 512
-        versionName = "5.1.2"
-        multiDexEnabled = true
+        versionCode = 513
+        versionName = "5.1.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -27,27 +22,35 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Official Google AdMob Test Ad Unit IDs
+            resValue("string", "admob_app_id", "ca-app-pub-3940256099942544~3347511713")
+            resValue("string", "banner_ad_unit_id", "ca-app-pub-3940256099942544/6300978111")
+            resValue("string", "rewarded_ad_unit_id", "ca-app-pub-3940256099942544/5224354917")
+        }
         release {
             minifyEnabled = true
-            ndk.debugSymbolLevel = 'SYMBOL_TABLE'
+            shrinkResources = true
+            ndk {
+                debugSymbolLevel = 'FULL'
+            }
             proguardFiles(
                     getDefaultProguardFile('proguard-android-optimize.txt'),
                     'proguard-rules.pro'
             )
+            resValue("string", "admob_app_id", "ca-app-pub-3940256099942544~3347511713")
+            resValue("string", "banner_ad_unit_id", "ca-app-pub-3940256099942544/6300978111")
+            resValue("string", "rewarded_ad_unit_id", "ca-app-pub-3940256099942544/5224354917")
         }
     }
 
     buildFeatures {
         compose = true
+        resValues = true
+        buildConfig = true
     }
 
     namespace = "developer.android.vd.diceroller"
-}
-
-tasks.withType(KotlinCompile).configureEach {
-    compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_17)
-    }
 }
 
 dependencies {
@@ -61,7 +64,6 @@ dependencies {
     implementation libs.androidx.room.ktx
     implementation libs.androidx.browser
     implementation libs.androidx.core.ktx
-    implementation libs.androidx.multidex
     implementation libs.billing
     implementation libs.play.services.ads
     implementation libs.review.ktx
